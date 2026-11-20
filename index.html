@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SHADOW AI – Intelligent Decision Simulator</title>
+  <meta name="description" content="SHADOW AI simulates the futures behind a decision: it compares options, generates scenarios, scores risks and ranks a recommendation.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <a class="skip-link" href="#workspace">Skip to workspace</a>
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true"></span>
+      <div>
+        <h1>SHADOW AI</h1>
+        <p>Intelligent Decision Simulator</p>
+      </div>
+    </div>
+    <div class="topbar-actions">
+      <span id="engine-badge" class="badge" role="status">Local engine</span>
+      <button id="settings-btn" class="btn btn-ghost" type="button" aria-haspopup="dialog">Claude settings</button>
+    </div>
+  </header>
+
+  <main id="workspace" class="layout">
+    <!-- LEFT: decision input -->
+    <section class="panel input-panel" aria-labelledby="input-title">
+      <h2 id="input-title">Describe your decision</h2>
+
+      <div class="demo-block">
+        <p class="hint">Try a ready-made decision with one click:</p>
+        <div id="demo-grid" class="demo-grid">
+          <button class="demo-card" type="button" data-scenario="career">
+            <strong>Job offer vs. current role</strong>
+            <span>Career move under uncertainty</span>
+          </button>
+          <button class="demo-card" type="button" data-scenario="startup">
+            <strong>Launch a startup</strong>
+            <span>Quit, bootstrap or fundraise</span>
+          </button>
+          <button class="demo-card" type="button" data-scenario="study">
+            <strong>Master's degree path</strong>
+            <span>Study abroad, local, or work first</span>
+          </button>
+          <button class="demo-card" type="button" data-scenario="tech">
+            <strong>Choose a tech stack</strong>
+            <span>Build the product on the right foundation</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="decision-title">Decision</label>
+        <input id="decision-title" type="text" maxlength="140" placeholder="Example: Should I accept the remote job offer?" autocomplete="off">
+      </div>
+
+      <div class="field">
+        <label for="decision-context">Context and constraints</label>
+        <textarea id="decision-context" rows="5" maxlength="1200" placeholder="Describe your situation: goals, budget, deadlines, people affected, what worries you."></textarea>
+        <span class="counter"><span id="context-count">0</span> / 1200</span>
+      </div>
+
+      <fieldset class="field options-field">
+        <legend>Options to compare (2 to 5)</legend>
+        <ul id="options-list" class="options-list"></ul>
+        <button id="add-option" class="btn btn-ghost" type="button">Add option</button>
+      </fieldset>
+
+      <fieldset class="field weights-field">
+        <legend>What matters most to you?</legend>
+        <div class="weight-row">
+          <label for="w-cost">Low cost</label>
+          <input id="w-cost" type="range" min="0" max="10" value="5" data-weight="cost">
+          <output for="w-cost">5</output>
+        </div>
+        <div class="weight-row">
+          <label for="w-time">Speed</label>
+          <input id="w-time" type="range" min="0" max="10" value="5" data-weight="time">
+          <output for="w-time">5</output>
+        </div>
+        <div class="weight-row">
+          <label for="w-impact">Long-term impact</label>
+          <input id="w-impact" type="range" min="0" max="10" value="7" data-weight="impact">
+          <output for="w-impact">7</output>
+        </div>
+        <div class="weight-row">
+          <label for="w-risk">Safety (low risk)</label>
+          <input id="w-risk" type="range" min="0" max="10" value="6" data-weight="risk">
+          <output for="w-risk">6</output>
+        </div>
+      </fieldset>
+
+      <p id="form-error" class="form-error" role="alert" hidden></p>
+
+      <div class="actions">
+        <button id="run-btn" class="btn btn-primary" type="button">Run simulation</button>
+        <button id="reset-btn" class="btn btn-ghost" type="button">Clear</button>
+      </div>
+    </section>
+
+    <!-- RIGHT: pipeline output -->
+    <section class="panel output-panel" aria-labelledby="output-title" aria-live="polite">
+      <div class="output-head">
+        <h2 id="output-title">Analysis pipeline</h2>
+        <div class="output-tools">
+          <button id="copy-btn" class="btn btn-ghost" type="button" disabled>Copy report</button>
+          <button id="export-btn" class="btn btn-ghost" type="button" disabled>Download report</button>
+        </div>
+      </div>
+
+      <ol id="pipeline" class="pipeline">
+        <li data-step="1" class="is-idle"><span>Decompose</span></li>
+        <li data-step="2" class="is-idle"><span>Compare</span></li>
+        <li data-step="3" class="is-idle"><span>Simulate</span></li>
+        <li data-step="4" class="is-idle"><span>Assess risk</span></li>
+        <li data-step="5" class="is-idle"><span>Recommend</span></li>
+      </ol>
+
+      <div id="empty-state" class="empty-state">
+        <div class="shadow-figure" aria-hidden="true"></div>
+        <h3>Nothing simulated yet</h3>
+        <p>Pick a ready-made decision on the left, or enter your own, then choose Run simulation. Each of the five stages appears here as it completes.</p>
+      </div>
+
+      <div id="results" class="results" hidden>
+        <article id="step-1" class="step-card" hidden>
+          <header><h3>Problem decomposition and context</h3><span class="step-time"></span></header>
+          <div id="out-decomposition" class="step-body"></div>
+        </article>
+
+        <article id="step-2" class="step-card" hidden>
+          <header><h3>Option comparison matrix</h3><span class="step-time"></span></header>
+          <div id="out-matrix" class="step-body"></div>
+        </article>
+
+        <article id="step-3" class="step-card" hidden>
+          <header><h3>Future scenarios</h3><span class="step-time"></span></header>
+          <div id="out-scenarios" class="step-body"></div>
+        </article>
+
+        <article id="step-4" class="step-card" hidden>
+          <header><h3>Risk assessment and mitigation</h3><span class="step-time"></span></header>
+          <div id="out-risk" class="step-body"></div>
+        </article>
+
+        <article id="step-5" class="step-card step-final" hidden>
+          <header><h3>Ranked recommendation and action plan</h3><span class="step-time"></span></header>
+          <div id="out-recommendation" class="step-body"></div>
+        </article>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>SHADOW AI is a decision-support simulation. Scores are model estimates, not guarantees. Verify important choices with a qualified person.</p>
+  </footer>
+
+  <!-- Claude settings dialog -->
+  <dialog id="settings-dialog" class="dialog" aria-labelledby="settings-title">
+    <form method="dialog" class="dialog-body" id="settings-form">
+      <h2 id="settings-title">Claude API integration</h2>
+      <p class="hint">Optional. With a key, each stage is written by Claude. Without one, SHADOW AI uses its built-in local simulation engine.</p>
+
+      <label class="switch-row" for="use-claude">
+        <input id="use-claude" type="checkbox">
+        <span>Use Claude for analysis</span>
+      </label>
+
+      <div class="field">
+        <label for="api-key">Anthropic API key</label>
+        <input id="api-key" type="password" placeholder="sk-ant-..." autocomplete="off" spellcheck="false">
+        <span class="hint">The key stays in this tab's memory only. It is never saved or sent anywhere except api.anthropic.com.</span>
+      </div>
+
+      <div class="field">
+        <label for="model-name">Model</label>
+        <input id="model-name" type="text" value="claude-sonnet-4-6" autocomplete="off" spellcheck="false">
+      </div>
+
+      <div class="dialog-actions">
+        <button id="settings-save" class="btn btn-primary" value="save">Save settings</button>
+        <button id="settings-cancel" class="btn btn-ghost" value="cancel">Cancel</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
